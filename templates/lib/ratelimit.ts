@@ -2,6 +2,8 @@
  * IP + Cookie fingerprint rate limiter
  * - Upstash Redis if KV_REST_API_URL / KV_REST_API_TOKEN env vars present
  * - Otherwise in-memory fallback (per serverless instance — inaccurate but safe)
+ *
+ * Ported from xiaoer-tools-wall, adapted to plain Node/Vercel request signature.
  */
 import type { VercelRequest } from '@vercel/node';
 
@@ -68,6 +70,21 @@ async function redisGet(key: string): Promise<number> {
   return Number(data.result || 0);
 }
 
+function globalKey(): string {
+  const d = new Date(Date.now() + 8 * 3600 * 1000);
+  return `cost:${d.toISOString().slice(0, 10)}`;
+}
+
+export async function getGlobalCount(): Promise<number> {
+  if (!HAS_REDIS) return 0;
+  try { return await redisGet(globalKey()); } catch { return 0; }
+}
+
+export async function incrementGlobalCount(): Promise<number> {
+  if (!HAS_REDIS) return 0;
+  try { return await redisIncr(globalKey()); } catch { return 0; }
+}
+
 export async function checkRateLimit(
   fingerprint: string,
   limit: number,
@@ -93,6 +110,7 @@ export async function checkRateLimit(
     }
   }
 
+  // Memory fallback
   const now = Date.now();
   const rec = memoryCounts.get(key);
   if (rec && rec.reset > now) {

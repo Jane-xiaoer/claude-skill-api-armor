@@ -18,17 +18,22 @@ effort: medium
 
 **手动审计：** Jane 说「审计 X 项目的 API 安全」、「这个项目有没有 key 泄漏」。
 
-## 核心模式（三层防护）
+## 核心模式（多层防护）
 
 来自实战验证（`xiaoer-tools-wall` / `AI-MVP` / `Camera-Museum` / `headshot`）的 working 模式：
 
 | 层 | 触发 | Key 来源 | 限制 |
 |----|------|---------|------|
 | **master** | header `x-master-key === MASTER_PASSWORD` | 服务器 GEMINI_API_KEY | 无限 |
-| **byok** | header `x-user-api-key` 以 `AIza` / `sk-` 开头 | 调用方自己的 key | 无限（自己付钱） |
-| **free** | 都没填 | 服务器 GEMINI_API_KEY | IP+cookie 限流（默认 3 次/天） |
+| **byok** | header `x-user-api-key` 以 `AIza` / `AQ.` / `sk-` 开头 | 调用方自己的 key | 无限（自己付钱） |
+| **free** | 都没填 | 服务器 GEMINI_API_KEY | IP+cookie 限流 + Turnstile 人机验证 + 全局日额熔断 |
 
 **核心约束：** 真 API key **永远只在 Vercel env**，前端永远 fetch `/api/generate`，不直连 AI SDK。
+
+**Free 模式三道墙（按顺序）：**
+1. **Cloudflare Turnstile**（防自动脚本/IP 池）—— 前端 invisible 拿 token，后端 `siteverify` 校验
+2. **全局日额熔断**（防账单飞）—— Upstash 全站日计数器，超 `FREE_GLOBAL_DAILY_LIMIT` 全部 503
+3. **每 IP+cookie 限流**（防单人狂刷）—— 默认每日 3 次
 
 ## 审计 checklist（在动手前先跑）
 
@@ -106,12 +111,36 @@ server: {
 | Key | 值 | 必需 |
 |-----|----|----|
 | `GEMINI_API_KEY` | 你的真 key | ✅ |
-| `MASTER_PASSWORD` | 自定义密码（如 `8005`） | ✅ |
+| `MASTER_PASSWORD` | 自定义密码（≥ 12 位随机字符串！别用 4 位数） | ✅ |
 | `KV_REST_API_URL` | Upstash Redis URL | 推荐 |
 | `KV_REST_API_TOKEN` | Upstash Redis Token | 推荐 |
-| `FREE_DAILY_LIMIT` | 数字，默认 3 | 可选 |
+| `FREE_DAILY_LIMIT` | 单 IP 每日次数，默认 3 | 可选 |
+| `FREE_GLOBAL_DAILY_LIMIT` | 全站每日次数，0 = 禁用熔断，推荐 30 | 推荐 |
+| `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile secret | 推荐 |
+| `VITE_TURNSTILE_SITEKEY` | Cloudflare Turnstile sitekey（前端用，公开） | 推荐 |
 
 没配 Upstash 时自动 fallback 内存限流（单 serverless 实例内准，跨实例不准但安全）。
+没配 Turnstile 时自动跳过人机验证（开发环境友好，但生产建议配）。
+`FREE_GLOBAL_DAILY_LIMIT=0` 时禁用全局熔断。
+
+### Step 7.1 — Cloudflare Turnstile widget 创建（90 秒）
+
+走 [dash.cloudflare.com](https://dash.cloudflare.com) → Turnstile → Add Widget。或直接 API 一行搞定（同登录态浏览器 console 跑）：
+
+```js
+await fetch('/api/v4/accounts/<ACCOUNT_ID>/challenges/widgets', {
+  method: 'POST',
+  credentials: 'include',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    name: 'api-armor',
+    mode: 'invisible',
+    domains: ['your-site-1.vercel.app', 'your-site-2.vercel.app']
+  })
+}).then(r => r.json())
+```
+
+返回的 `result.sitekey` → `VITE_TURNSTILE_SITEKEY`；`result.secret` → `TURNSTILE_SECRET_KEY`。
 
 ### Step 8 — 本地 build 验证
 
@@ -139,8 +168,8 @@ middleware 可设置 `xfp` cookie 做更准的 fingerprint（参考 `xiaoer-tool
 |------|------|------|
 | `xiaoer-tools-wall` | 🟢 三层完备 | 这套模式的源头，Upstash 接好 |
 | `AI-MVP` | 🟢 三层完备 | 端口此模式，多模型白名单 |
-| `Camera-Museum` | 🟢 已迁（2026-05-13） | 默认 gemini-3-pro-image-preview |
-| `headshot` | 🟢 已迁（2026-05-13） | 默认 gemini-2.5-flash-image-preview |
+| `Camera-Museum` | 🟢 全套防护 (2026-05-13) | Turnstile + 全局熔断（30/天）+ 3 层 |
+| `headshot` | 🟢 全套防护 (2026-05-13) | 同上 |
 
 ## 一句话提示词（开新项目时甩给自己）
 
