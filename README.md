@@ -116,8 +116,27 @@ MIT © Jane Xiaoer
 ## 相关
 
 - 实战源头：[xiaoer-tools-wall](https://xiaoer-tools-wall.vercel.app) · [repo](https://github.com/Jane-xiaoer/xiaoers-arsenal)
-- 作者：[Jane (小耳) on X](https://x.com/janexiaoer)
+- 作者：[Jane (小耳) on X](https://x.com/xiaoerzhan)
 - 同系列 skill：
   - [claude-skill-meeting-secretary](https://github.com/Jane-xiaoer/claude-skill-meeting-secretary)
   - [claude-skill-video-transcribe](https://github.com/Jane-xiaoer/claude-skill-video-transcribe)
   - [claude-skill-tearable-cloth](https://github.com/Jane-xiaoer/claude-skill-tearable-cloth)
+
+---
+
+## 📱 关注作者 / Follow Me
+
+如果这个仓库对你有帮助,欢迎关注我。后面我会持续更新更多 AI Skill、设计方法、网站美学和创意工作流。
+
+If this repo helped you, follow me for more AI skills, design systems, web aesthetics, and creative workflows.
+
+- X (Twitter): [@xiaoerzhan](https://x.com/xiaoerzhan)
+- 微信公众号 / WeChat Official Account: 扫码关注 / Scan to follow
+
+<p align="center">
+  <img src="./follow-wechat-qrcode.jpg" alt="Jane WeChat Official Account QR code" width="300" />
+</p>
+
+<p align="center"><strong>中文:</strong>欢迎关注我的公众号,一起研究 AI Skill、设计原则、网站表达和创意工作流。</p>
+
+<p align="center"><strong>English:</strong> Follow my WeChat Official Account for more AI skills, design principles, web aesthetics, and creative workflows.</p>
